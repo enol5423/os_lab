@@ -67,6 +67,12 @@ void __sys_init(void)
 	kprintf("Copyright (c) 2024, Prof. Mosaddek Tushar, CSE, DU\r\n");
 	kprintf("CPUID %x\n", SCB->CPUID);
 	kprintf("OS Version: 2024.1.0.0\n");
+
+	kprintf("Dictator 1: Nahin Ehsan Nilav (31)\r\n");
+	kprintf("Dictator 2: Anirban Roy Sourov (32)\r\n");
+	kprintf("Dictator 3: Md. Nuran Nahadi Islam (38)\r\n");
+
+
 	kprintf("Time Elapse %d ms\n",__getTime());
 	kprintf("*************************************\r\n");
 	kprintf("# ");

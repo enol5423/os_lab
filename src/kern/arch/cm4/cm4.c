@@ -32,6 +32,12 @@
 #include <sys_clock.h>
 #include <syscall.h>
 
+// Global variables for time tracking
+static volatile uint32_t systick_ms_counter = 0;
+static volatile uint32_t systick_seconds = 0;
+static volatile uint32_t systick_minutes = 0;
+static volatile uint32_t systick_hours = 0;
+
 /************************************************************************************
 * __SysTick_init(uint32_t reload) 
 * Function initialize the SysTick clock. The function with a weak attribute enables 
@@ -40,16 +46,35 @@
 
 void __SysTick_init(uint32_t reload)
 {
+    // Disable SysTick first
+    SYSTICK->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
     
+    // Set reload value (24-bit value, must be > 0)
+    if (reload == 0) reload = 1;
+    SYSTICK->LOAD = (reload - 1) & SysTick_LOAD_RELOAD_Msk;
+    
+    // Clear current value
+    SYSTICK->VAL = 0;
+    
+    // Configure SysTick to use processor clock source
+    SYSTICK->CTRL |= SysTick_CTRL_CLKSOURCE_Msk;
+    
+    // Reset time counters
+    systick_ms_counter = 0;
+    systick_seconds = 0;
+    systick_minutes = 0;
+    systick_hours = 0;
 }
 void SysTickIntDisable(void)
 {
-
+    // Disable SysTick interrupt
+    SYSTICK->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
 }
 
 void SysTickIntEnable(void)
 {
-
+    // Enable SysTick interrupt
+    SYSTICK->CTRL |= SysTick_CTRL_TICKINT_Msk;
 }
 /************************************************************************************
 * __sysTick_enable(void) 
@@ -58,15 +83,18 @@ void SysTickIntEnable(void)
 **************************************************************************************/
 void __SysTick_enable(void)
 {
-
+    // Enable SysTick counter
+    SYSTICK->CTRL |= SysTick_CTRL_ENABLE_Msk;
 }
 void __sysTick_disable(void)
 {
-
+    // Disable SysTick counter
+    SYSTICK->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 }
 uint32_t __getSysTickCount(void)
 {
-    return 0; // TODO: Implement SysTick count retrieval
+    // Read current SysTick counter value
+    return SYSTICK->VAL;
 }
 /************************************************************************************
 * __updateSysTick(uint32_t count) 
@@ -76,7 +104,11 @@ uint32_t __getSysTickCount(void)
 
 void __updateSysTick(uint32_t count)
 {
- 
+    // Update SysTick reload value
+    if (count == 0) count = 1;
+    SYSTICK->LOAD = (count - 1) & SysTick_LOAD_RELOAD_Msk;
+    // Clear current value to restart counting
+    SYSTICK->VAL = 0;
 }
 
 /************************************************************************************
@@ -87,21 +119,48 @@ void __updateSysTick(uint32_t count)
 
 uint32_t __getTime(void)
 {
-    return 0; // TODO: Implement time retrieval
+    // Return elapsed time in milliseconds since initialization
+    return systick_ms_counter;
 }
 
 uint32_t __get__Second(void){
-    return 0; // TODO: Implement seconds retrieval
+    // Return current seconds
+    return systick_seconds;
 }
 uint32_t __get__Minute(void){
-    return 0; // TODO: Implement minutes retrieval
+    // Return current minutes
+    return systick_minutes;
 }
 uint32_t __get__Hour(void){
-    return 0; // TODO: Implement hours retrieval
+    // Return current hours
+    return systick_hours;
 }
 void SysTick_Handler(void)
 {
-  
+    // Increment millisecond counter
+    systick_ms_counter++;
+    
+    // Handle seconds rollover (1000ms = 1s)
+    if ((systick_ms_counter % 1000) == 0) {
+        systick_seconds++;
+        
+        // Handle minutes rollover (60s = 1min)
+        if (systick_seconds >= 60) {
+            systick_seconds = 0;
+            systick_minutes++;
+            
+            // Handle hours rollover (60min = 1hr)
+            if (systick_minutes >= 60) {
+                systick_minutes = 0;
+                systick_hours++;
+                
+                // Handle day rollover (24hr = 1day) - reset to 0
+                if (systick_hours >= 24) {
+                    systick_hours = 0;
+                }
+            }
+        }
+    }
 }
 
 void __enable_fpu()
@@ -111,17 +170,58 @@ void __enable_fpu()
 
 uint8_t ms_delay(uint32_t delay)
 {
-    return 0; // TODO: Implement millisecond delay
+    uint32_t start_time = systick_ms_counter;
+    uint32_t target_time = start_time + delay;
+    
+    // Handle counter overflow case
+    if (target_time < start_time) {
+        // Wait for overflow to occur
+        while (systick_ms_counter >= start_time) {
+            __NOP(); // Prevent compiler optimization
+        }
+        // Now wait for target time
+        while (systick_ms_counter < (target_time & 0xFFFFFFFF)) {
+            __NOP();
+        }
+    } else {
+        // Normal case - no overflow
+        while (systick_ms_counter < target_time) {
+            __NOP();
+        }
+    }
+    
+    return 1; // Success
 }
 
 uint32_t getmsTick(void)
 {
-    return 0; // TODO: Implement millisecond tick retrieval
+    // Return millisecond tick counter
+    return systick_ms_counter;
 }
 
 uint32_t wait_until(uint32_t delay)
 {
-    return 0; // TODO: Implement wait until delay
+    uint32_t start_time = systick_ms_counter;
+    uint32_t target_time = start_time + delay;
+    
+    // Handle counter overflow case
+    if (target_time < start_time) {
+        // Wait for overflow to occur
+        while (systick_ms_counter >= start_time) {
+            __NOP(); // Prevent compiler optimization
+        }
+        // Now wait for target time
+        while (systick_ms_counter < (target_time & 0xFFFFFFFF)) {
+            __NOP();
+        }
+    } else {
+        // Normal case - no overflow
+        while (systick_ms_counter < target_time) {
+            __NOP();
+        }
+    }
+    
+    return systick_ms_counter; // Return current time
 }
 
 void SYS_SLEEP_WFI(void)
