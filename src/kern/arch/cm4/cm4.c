@@ -86,7 +86,7 @@ void __SysTick_enable(void)
     // Enable SysTick counter
     SYSTICK->CTRL |= SysTick_CTRL_ENABLE_Msk;
 }
-void __sysTick_disable(void)
+void __SysTick_disable(void)
 {
     // Disable SysTick counter
     SYSTICK->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
