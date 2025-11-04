@@ -28,6 +28,6 @@
  * SUCH DAMAGE.
  */
  
-#include <times.h>
-/* Define you function details here */
+/* Intentionally left minimal: time_ms() wrapper is implemented in
+ * userland/utils/unistd.c to avoid duplicate definitions. */
 

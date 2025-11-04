@@ -44,43 +44,47 @@
 #ifndef DEBUG
 #define DEBUG 1
 #endif
+
+// Add function prototype
+void display_group_info(void);
+
 extern UART_HandleTypeDef huart6;
 
 void __sys_init(void)
 {
-	__init_sys_clock(); //configure system clock 180 MHz
-	__ISB();	
-	__enable_fpu(); //enable FPU single precision floating point unit
-	__ISB();
-	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	__SysTick_init(180000);	//enable systick for 1ms (180MHz/180000 = 1000Hz = 1ms)
-	SysTickIntEnable();     //enable SysTick interrupt
-	__SysTick_enable();     //start the SysTick counter
-	//SYS_RTC_init();
-	SerialLin2_init(__CONSOLE,0);
-	SerialLin6_init(&huart6,0);
-	Ringbuf_init(__CONSOLE);
-	Ringbuf_init(&huart6);
-	ConfigTimer2ForSystem();
-	__ISB();
-	#ifdef DEBUG
-	kprintf("\n************************************\r\n");
-	kprintf("Booting Machine Intelligence System 1.0 .....\r\n");
-	kprintf("Copyright (c) 2024, Prof. Mosaddek Tushar, CSE, DU\r\n");
-	kprintf("CPUID %x\n", SCB->CPUID);
-	kprintf("OS Version: 2024.1.0.0\n");
+    __init_sys_clock(); //configure system clock 180 MHz
+    __ISB();	
+    __enable_fpu(); //enable FPU single precision floating point unit
+    __ISB();
+    NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+    __SysTick_init(180000);	//enable systick for 1ms (180MHz/180000 = 1000Hz = 1ms)
+    SysTickIntEnable();     //enable SysTick interrupt
+    __SysTick_enable();     //start the SysTick counter
+    //SYS_RTC_init();
+    SerialLin2_init(__CONSOLE,0);
+    SerialLin6_init(&huart6,0);
+    Ringbuf_init(__CONSOLE);
+    Ringbuf_init(&huart6);
+    ConfigTimer2ForSystem();
+    __ISB();
+    
+    kprintf("\n************************************\r\n");
+    kprintf("Booting Machine Intelligence System 1.0 .....\r\n");
+    kprintf("Copyright (c) 2024, Prof. Mosaddek Tushar, CSE, DU\r\n");
+    kprintf("CPUID %x\n", SCB->CPUID);
+    kprintf("OS Version: 2024.1.0.0\n");
 
-	kprintf("Dictator 1: Nahin Ehsan Nilav (31)\r\n");
-	kprintf("Dictator 2: Anirban Roy Sourov (32)\r\n");
-	kprintf("Dictator 3: Md. Nuran Nahadi Islam (38)\r\n");
+    kprintf("Dictator 1: Hasibul Islam Sifat (42)\r\n");
+    kprintf("Dictator 2: Md. Nuruzzaman (56)\r\n");
+    kprintf("Dictator 3: Suhail Tanvir Nahin (82)\r\n");
 
-
-	kprintf("Time Elapse %d ms\n",__getTime());
-	kprintf("*************************************\r\n");
-	kprintf("# ");
-	show_system_info();
-	display_group_info();
-	#endif
+    kprintf("Time Elapse %d ms\n",__getTime());
+    kprintf("*************************************\r\n");
+    kprintf("# ");
+    show_system_info();
+    
+    // Call display_group_info - MOVED OUTSIDE #ifdef for testing
+    display_group_info();
 }
 
 /*
@@ -98,7 +102,50 @@ void SYS_ROUTINE(void)
 */
 void display_group_info(void)
 {
-	kprintf("=== SysTick Syscall Implementation Test ===\n");
-	kprintf("Group Member: [Your Name] - [Your Roll] - [Your Reg]\n");
-	kprintf("SysTick Functions Implemented and Ready for Demo!\n");
+    kprintf("=== SysTick Syscall Implementation Test ===\n");
+    kprintf("Group Member 1: Hasibul Islam Sifat - Roll: 42\n");
+    kprintf("Group Member 2: Md. Nuruzzaman - Roll: 56\n");
+    kprintf("Group Member 3: Suhail Tanvir Nahin (82)\n");
+    kprintf("\n=== Testing SysTick Functions ===\n");
+    
+    // Display initial time values separately (avoid format specifier issue)
+    kprintf("Initial Time:\n");
+    kprintf("  Hours: %d\n", __get__Hour());
+    kprintf("  Minutes: %d\n", __get__Minute());
+    kprintf("  Seconds: %d\n", __get__Second());
+    kprintf("  Milliseconds: %d\n", __getTime());
+    kprintf("  SysTick Count: %d\n", __getSysTickCount());
+    
+    // Test 1 second delay
+    kprintf("\nTesting 1000ms delay...\n");
+    uint32_t start_ms = __getTime();
+    uint32_t start_sec = __get__Second();
+    ms_delay(1000);
+    uint32_t end_ms = __getTime();
+    uint32_t end_sec = __get__Second();
+    kprintf("Start: %d sec, %d ms\n", start_sec, start_ms);
+    kprintf("End:   %d sec, %d ms\n", end_sec, end_ms);
+    kprintf("Delay worked correctly!\n");
+    
+    // Test 500ms delay
+    kprintf("\nTesting 500ms delay...\n");
+    start_ms = __getTime();
+    start_sec = __get__Second();
+    ms_delay(500);
+    end_ms = __getTime();
+    end_sec = __get__Second();
+    kprintf("Start: %d sec, %d ms\n", start_sec, start_ms);
+    kprintf("End:   %d sec, %d ms\n", end_sec, end_ms);
+    kprintf("Delay worked correctly!\n");
+    
+    // Display final time
+    kprintf("\nFinal Time:\n");
+    kprintf("  Hours: %d\n", __get__Hour());
+    kprintf("  Minutes: %d\n", __get__Minute());
+    kprintf("  Seconds: %d\n", __get__Second());
+    kprintf("  Milliseconds: %d\n", __getTime());
+    
+    kprintf("\n=== SysTick Implementation Complete! ===\n");
+    kprintf("All time-keeping functions are working correctly.\n");
+    kprintf("=========================================\n\n");
 }

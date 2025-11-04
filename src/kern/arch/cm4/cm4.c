@@ -228,3 +228,12 @@ void SYS_SLEEP_WFI(void)
 {
     __WFI();
 }
+
+/* Minimal PendSV handler for cooperative yield demo.
+ * A real context switcher would save/restore r4-r11 and swap PSPs.
+ */
+void PendSV_Handler(void)
+{
+    /* Simply clear the pending flag and return. */
+    SCB->ICSR |= SCB_ICSR_PENDSVCLR_Msk;
+}

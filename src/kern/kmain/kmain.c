@@ -36,6 +36,7 @@
 #include <kstdio.h>
 #include <sys_rtc.h>
 #include <kstring.h>
+#include <unistd.h>
 
 #ifndef DEBUG
 #define DEBUG 1
@@ -107,6 +108,16 @@ void kmain(void)
     SysTickIntEnable();
     __SysTick_enable();
     
+    // --- Syscall smoke test via userland wrappers ---
+    write(1, "Hello via SYS_write\r\n", 21);
+    uint32_t t_ms = time_ms();
+    kprintf("time_ms() via syscall: %d\r\n", (int)t_ms);
+    int pid = getpid();
+    kprintf("getpid() via syscall: %d\r\n", pid);
+    int yret = yield();
+    kprintf("yield() returned: %d\r\n", yret);
+    // ------------------------------------------------
+
     // Run the syscall demonstration
     kprintf("\n*** Starting SysTick Syscall Demo ***\n");
     test_systick_syscalls();

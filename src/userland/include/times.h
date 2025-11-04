@@ -30,5 +30,8 @@
  
 #ifndef __TIMES_H
 #define __TIMES_H
-/* Define times function prototypes here */
+/* Simple userland time helper returning milliseconds since boot */
+#include <stdint.h>
+
+uint32_t time_ms(void);
 #endif

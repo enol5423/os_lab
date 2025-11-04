@@ -30,6 +30,21 @@
  
 #ifndef __UNISTD_H
 #define __UNISTD_H
-/* Basic input and output function */
+/* Basic input and output functions (userland wrappers invoking SVC) */
+
+#include <stdint.h>
+#include <types.h>   /* brings in size_t macro and common types */
+
+typedef int32_t ssize_t;
+typedef int pid_t;
+
+/* Syscall-like user API */
+ssize_t write(int fd, const void *buf, size_t count);
+ssize_t read(int fd, void *buf, size_t count);
+void _exit(int status);
+pid_t getpid(void);
+uint32_t time_ms(void);
+int reboot(void);
+int yield(void);
 
 #endif

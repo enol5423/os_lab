@@ -187,10 +187,30 @@ void BusFault_Handler(void)
 }
 
 void SVCall_Handler(void){
-/* Write code for SVC handler */
-/* the handler function evntually call syscall function with a call number */
+/* SVC handler: extract stacked context, fetch syscall id (r0),
+ * dispatch to kernel, and place return value back into stacked r0. */
+	extern int32_t syscall_dispatch(uint16_t callno, uint32_t a1, uint32_t a2, uint32_t a3);
 
+	uint32_t *stack_ptr;
+	/* Determine stack pointer in use: MSP or PSP (bit 2 of LR) */
+	__asm volatile (
+		"TST lr, #4       \n"
+		"ITE EQ           \n"
+		"MRSEQ %0, MSP    \n"
+		"MRSNE %0, PSP    \n"
+		: "=r" (stack_ptr) :: "memory"
+	);
 
+	/* Stacked registers: r0,r1,r2,r3,r12,lr,pc,xpsr */
+	uint16_t callno = (uint16_t)(stack_ptr[0]);
+	uint32_t a1 = stack_ptr[1];
+	uint32_t a2 = stack_ptr[2];
+	uint32_t a3 = stack_ptr[3];
+
+	int32_t ret = syscall_dispatch(callno, a1, a2, a3);
+
+	/* Place return value in stacked r0 so the thread receives it in r0 */
+	stack_ptr[0] = (uint32_t)ret;
 }
 
 

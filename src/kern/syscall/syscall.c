@@ -28,34 +28,88 @@
  * SUCH DAMAGE.
 */
 
+/* Syscall dispatcher implementation */
 #include <syscall.h>
 #include <syscall_def.h>
 #include <errno.h>
 #include <errmsg.h>
-void syscall(uint16_t callno)
+#include <stdint.h>
+#include <kstdio.h>
+#include <kunistd.h>
+#include <cm4.h>
+
+/*
+ Contract (register-based):
+  - r0: syscall id (uint16_t used)
+  - r1: arg1, r2: arg2, r3: arg3
+ Return value placed in r0 by SVC handler after calling this.
+*/
+
+static int32_t sys_write_impl(int fd, const uint8_t *buf, uint32_t len)
 {
-/* The SVC_Handler calls this function to evaluate and execute the actual function */
-/* Take care of return value or code */
-	switch(callno)
-	{
-		/* Write your code to call actual function (kunistd.h/c or times.h/c and handle the return value(s) */
-		case SYS_read: 
-			break;
-		case SYS_write:
-			break;
-		case SYS_reboot:
-			break;	
-		case SYS__exit:
-			break;
-		case SYS_getpid:
-			break;
-		case SYS___time:
-			break;
-		case SYS_yield:
-			break;				
-		/* return error code see error.h and errmsg.h ENOSYS sys_errlist[ENOSYS]*/	
-		default: ;
+	if (buf == 0U) return -EINVAL;
+	if (fd == STDOUT_FILENO || fd == STDERR_FILENO) {
+		putstr(buf, (size_t)len);
+		return (int32_t)len;
 	}
-/* Handle SVC return here */
+	return -ENOSYS;
+}
+
+static int32_t sys_time_impl(void)
+{
+	return (int32_t)__getTime();
+}
+
+static int32_t sys_reboot_impl(void)
+{
+	NVIC_SystemReset();
+	return 0; /* not reached */
+}
+
+static int32_t sys_yield_impl(void)
+{
+	/* Pend a PendSV for cooperative yield; minimal stub scheduler */
+	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
+	return 0;
+}
+
+static int32_t sys_getpid_impl(void)
+{
+	/* No tasking yet; return a fixed pid */
+	return 1;
+}
+
+static int32_t sys_exit_impl(int code)
+{
+	(void)code;
+	/* In absence of a full scheduler, just loop low-power */
+	while (1) {
+		__WFI();
+	}
+	/* unreachable, but keep compiler happy */
+	return 0;
+}
+
+int32_t syscall_dispatch(uint16_t callno, uint32_t a1, uint32_t a2, uint32_t a3)
+{
+	switch (callno)
+	{
+		case SYS_read:
+			return -ENOSYS; /* not implemented */
+		case SYS_write:
+			return sys_write_impl((int)a1, (const uint8_t*)a2, a3);
+		case SYS_reboot:
+			return sys_reboot_impl();
+		case SYS__exit:
+			return sys_exit_impl((int)a1);
+		case SYS_getpid:
+			return sys_getpid_impl();
+		case SYS___time:
+			return sys_time_impl();
+		case SYS_yield:
+			return sys_yield_impl();
+		default:
+			return -ENOSYS; /* see errno.h and errmsg.h */
+	}
 }
 
