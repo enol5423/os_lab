@@ -83,8 +83,8 @@ void __sys_init(void)
     kprintf("# ");
     show_system_info();
     
-    // Call display_group_info - MOVED OUTSIDE #ifdef for testing
-    display_group_info();
+    // Call display_group_info - DISABLED TO PREVENT REBOOT LOOP
+    // display_group_info();
 }
 
 /*

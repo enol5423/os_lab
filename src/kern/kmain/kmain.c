@@ -37,69 +37,29 @@
 #include <sys_rtc.h>
 #include <kstring.h>
 #include <unistd.h>
+#include <UsartRingBuffer.h>  /* For Uart_read, Uart_peek */
+// #include <schedule.h>  // Disabled for now
+
+/* Userland interactive syscall menu (implemented in userland/utils/interactive_syscall_menu.c) */
+extern void interactive_syscall_menu(void);
 
 #ifndef DEBUG
 #define DEBUG 1
 #endif
 
-// Test function to demonstrate SysTick syscall implementation
-void test_systick_syscalls(void)
+/* Local wrappers for CONTROL/PSP writes (since CMSIS helpers may not be exposed here) */
+static inline void k_set_PSP(uint32_t topOfProcStack)
 {
-    kprintf("\n=== SYSTICK SYSCALL DEMONSTRATION ===\n");
-    
-    // Test 1: Basic time reading
-    kprintf("1. Testing Basic Time Functions:\n");
-    kprintf("   Current time (ms): %d\n", __getTime());
-    kprintf("   Current seconds: %d\n", __get__Second());
-    kprintf("   Current minutes: %d\n", __get__Minute());
-    kprintf("   Current hours: %d\n", __get__Hour());
-    kprintf("   Millisecond tick: %d\n", getmsTick());
-    
-    // Test 2: SysTick counter access
-    kprintf("\n2. Testing SysTick Counter Access:\n");
-    uint32_t counter1 = __getSysTickCount();
-    kprintf("   SysTick counter: %d\n", counter1);
-    
-    // Test 3: Short delay demonstration
-    kprintf("\n3. Testing Delay Functions:\n");
-    kprintf("   Starting 2000ms delay test...\n");
-    uint32_t start_time = __getTime();
-    ms_delay(2000);  // 2 second delay
-    uint32_t end_time = __getTime();
-    kprintf("   Delay completed! Elapsed time: %d ms\n", end_time - start_time);
-    
-    // Test 4: Wait until function
-    kprintf("\n4. Testing wait_until function:\n");
-    kprintf("   Waiting 1500ms using wait_until...\n");
-    start_time = __getTime();
-    uint32_t result_time = wait_until(1500);
-    kprintf("   Wait completed at time: %d ms\n", result_time);
-    
-    // Test 5: SysTick enable/disable demonstration
-    kprintf("\n5. Testing SysTick Control:\n");
-    kprintf("   Current time before disable: %d ms\n", __getTime());
-    
-    kprintf("   Disabling SysTick for 1 second...\n");
-    __SysTick_disable();
-    // Simulate some work (busy wait without SysTick)
-    for(volatile int i = 0; i < 10000000; i++);
-    
-    kprintf("   Re-enabling SysTick...\n");
-    __SysTick_enable();
-    ms_delay(100); // Small delay to show it's working again
-    kprintf("   Current time after re-enable: %d ms\n", __getTime());
-    
-    // Test 6: Continuous time monitoring
-    kprintf("\n6. Continuous Time Monitoring (10 iterations):\n");
-    for(int i = 0; i < 10; i++) {
-        kprintf("   [%d] Time: %d ms, H:M:S = %d:%d:%d\n", 
-                i+1, __getTime(), __get__Hour(), __get__Minute(), __get__Second());
-        ms_delay(500);  // 500ms between readings
-    }
-    
-    kprintf("\n=== SYSTICK SYSCALL DEMO COMPLETED ===\n");
-    kprintf("All functions working correctly!\n\n");
+    __asm volatile ("MSR PSP, %0" : : "r" (topOfProcStack) : );
 }
+
+static inline void k_set_CONTROL(uint32_t control)
+{
+    __asm volatile ("MSR CONTROL, %0" : : "r" (control) : );
+}
+
+/* No comprehensive auto test; interactive menu only */
+
 void kmain(void)
 {
     __sys_init();
@@ -108,37 +68,52 @@ void kmain(void)
     SysTickIntEnable();
     __SysTick_enable();
     
-    // --- Syscall smoke test via userland wrappers ---
-    write(1, "Hello via SYS_write\r\n", 21);
-    uint32_t t_ms = time_ms();
-    kprintf("time_ms() via syscall: %d\r\n", (int)t_ms);
-    int pid = getpid();
-    kprintf("getpid() via syscall: %d\r\n", pid);
-    int yret = yield();
-    kprintf("yield() returned: %d\r\n", yret);
-    // ------------------------------------------------
+    // Small delay for serial monitor connection
+    ms_delay(1000);
+    
+    /* UART handle not needed here anymore; input handled entirely in userland via syscalls */
+    
+    kprintf("\n");
+    kprintf("****************************************************\n");
+    kprintf("   DUOS SYSCALL TESTING SYSTEM\n");
+    kprintf("****************************************************\n");
+    kprintf("\n");
+    kprintf("Testing system calls through proper syscall interface\n");
+    kprintf("All tests use syscall() wrapper functions (SVC)\n");
+    kprintf("\n");
+    kprintf("Starting INTERACTIVE mode\n");
+    /*
+     * Optionally run the interactive menu as an unprivileged user thread.
+     * This demonstrates syscalls being invoked from user mode (PSP + unprivileged).
+     * Define RUN_USER_UNPRIV to enable.
+     */
+#ifdef RUN_USER_UNPRIV
+    /* allocate a small stack for the user thread */
+    static uint32_t user_stack[256]; /* 1KB stack */
+    uint32_t user_sp = (uint32_t)&user_stack[256]; /* top-of-stack (full descending) */
 
-    // Run the syscall demonstration
-    kprintf("\n*** Starting SysTick Syscall Demo ***\n");
-    test_systick_syscalls();
+    kprintf("Switching to user (unprivileged) Thread mode using PSP...\n");
+    /* Set PSP to user stack and switch Thread mode to use PSP & unprivileged */
+    k_set_PSP(user_sp);
+    /* CONTROL: bit0=SPSEL(1=PSP), bit1=nPRIV(1=unprivileged) -> value = 0b11 = 3 */
+    k_set_CONTROL( (1<<0) | (1<<1) );
+    __ISB(); /* ensure the change takes effect immediately */
+
+    /* Run interactive menu unprivileged */
+    interactive_syscall_menu();
+#else
+    /* Run interactive menu privileged (development mode) */
+    interactive_syscall_menu();
+#endif
     
-    // Interactive loop - shows live time updates
-    kprintf("*** Entering interactive mode - showing live time ***\n");
-    kprintf("*** System will show time updates every 3 seconds ***\n");
+    kprintf("\n");
+    kprintf("================================================\n");
+    kprintf("   EXITED INTERACTIVE MODE\n");
+    kprintf("================================================\n");
+    kprintf("\nSystem time: %d ms\n", (int)__getTime());
     
-    uint32_t last_display_time = 0;
-    while (1)
-    {
-        uint32_t current_time = __getTime();
-        
-        // Display time every 3 seconds
-        if (current_time - last_display_time >= 3000) {
-            kprintf("Live Time: %d ms | H:M:S = %02d:%02d:%02d\n", 
-                    current_time, __get__Hour(), __get__Minute(), __get__Second());
-            last_display_time = current_time;
-        }
-        
-        // Small delay to prevent overwhelming the output
-        ms_delay(100);
+    /* Idle loop */
+    while (1) {
+        __WFI();  // Wait for interrupt - low power mode
     }
 }

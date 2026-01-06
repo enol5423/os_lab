@@ -35,6 +35,10 @@ CFLAGS=-c \
 -Wall \
 -O0
 
+# Allow callers to append extra flags without overwriting defaults, e.g.:
+#   make EXTRA_CFLAGS="-DRUN_USER_UNPRIV"
+CFLAGS += $(EXTRA_CFLAGS)
+
 LDFLAGS = -nostdlib \
 -nostartfiles \
 -nodefaultlibs \
@@ -48,116 +52,100 @@ LDFLAGS = -nostdlib \
 
 .PHONY: all clean load
 
-all: kstring.o \
-kmath.o \
-cm4.o \
-mcu_info.o \
-kfloat.o \
-sys_clock.o \
-sys_usart.o \
-sys_gpio.o \
-sys_timer.o \
-kmain.o \
-kstdio.o \
-stm32_startup.o \
-sys_init.o \
-unistd.o \
-times.o \
-kunistd.o \
-ktimes.o \
-syscall.o \
-serial_lin.o \
-UsartRingBuffer.o \
-timer.o \
-debug.o \
-sys_spi.o \
-sys_err.o \
-sys_rtc.o \
-duos \
-final.elf
+# Build only the final link targets by default; object files are tracked via their own rules.
+all: duos final.elf
 
 
 
 # final.elf
 
 
-kstdio.o: $(OS_PATH)/lib/kstdio.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+
+$(OBJECT)/kstdio.o: $(OS_PATH)/lib/kstdio.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-kstring.o: $(OS_PATH)/lib/kstring.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/kstring.o: $(OS_PATH)/lib/kstring.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-kmain.o: $(OS_PATH)/kmain/kmain.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/kmain.o: $(OS_PATH)/kmain/kmain.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-sys_init.o: $(OS_PATH)/lib/kern/sys_init.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/sys_init.o: $(OS_PATH)/lib/kern/sys_init.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-sys_clock.o: $(OS_SYS_LIB)/sys_clock.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/schedule.o: $(OS_PATH)/lib/kern/schedule.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-mcu_info.o: $(OS_SYS_LIB)/mcu_info.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/sys_clock.o: $(OS_SYS_LIB)/sys_clock.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-sys_gpio.o: $(OS_SYS_LIB)/sys_gpio.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/mcu_info.o: $(OS_SYS_LIB)/mcu_info.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
+
+$(OBJECT)/sys_gpio.o: $(OS_SYS_LIB)/sys_gpio.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-sys_usart.o: $(OS_SYS_LIB)/sys_usart.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/sys_usart.o: $(OS_SYS_LIB)/sys_usart.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-sys_timer.o: $(OS_SYS_LIB)/sys_timer.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/sys_timer.o: $(OS_SYS_LIB)/sys_timer.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-kmath.o: $(OS_PATH)/lib/kmath.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/kmath.o: $(OS_PATH)/lib/kmath.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-stm32_startup.o: $(OS_SYS_LIB)/stm32_startup.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/stm32_startup.o: $(OS_SYS_LIB)/stm32_startup.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-cm4.o: $(OS_PATH)/arch/cm4/cm4.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/cm4.o: $(OS_PATH)/arch/cm4/cm4.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-kfloat.o: $(OS_PATH)/lib/kfloat.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/kfloat.o: $(OS_PATH)/lib/kfloat.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-unistd.o: $(USERLAND)/utils/unistd.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/unistd.o: $(USERLAND)/utils/unistd.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-kunistd.o: $(OS_PATH)/lib/kunistd.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/kunistd.o: $(OS_PATH)/lib/kunistd.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-ktimes.o: $(OS_PATH)/lib/ktimes.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/ktimes.o: $(OS_PATH)/lib/ktimes.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-times.o: $(USERLAND)/utils/times.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/times.o: $(USERLAND)/utils/times.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 	
-syscall.o: $(OS_PATH)/syscall/syscall.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/syscall.o: $(OS_PATH)/syscall/syscall.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-serial_lin.o: $(OS_PATH)/lib/kern/serial_lin.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/serial_lin.o: $(OS_PATH)/lib/kern/serial_lin.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-UsartRingBuffer.o: $(OS_PATH)/lib/UsartRingBuffer.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
 
-debug.o:$(OS_PATH)/lib/sotom/debug.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/interactive_syscall_menu.o: $(USERLAND)/utils/interactive_syscall_menu.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-timer.o: $(OS_PATH)/lib/sotom/timer.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/UsartRingBuffer.o: $(OS_PATH)/lib/UsartRingBuffer.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-sys_spi.o: $(OS_SYS_LIB)/sys_spi.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/debug.o:$(OS_PATH)/lib/sotom/debug.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-sys_err.o: $(OS_SYS_LIB)/sys_err.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/timer.o: $(OS_PATH)/lib/sotom/timer.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
-sys_rtc.o: $(OS_SYS_LIB)/sys_rtc.c
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+$(OBJECT)/sys_spi.o: $(OS_SYS_LIB)/sys_spi.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
+
+$(OBJECT)/sys_err.o: $(OS_SYS_LIB)/sys_err.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
+
+$(OBJECT)/sys_rtc.o: $(OS_SYS_LIB)/sys_rtc.c
+	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
 
 test_can.o: $(USERLAND)/utils/test_can.c
 	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $(OBJECT)/$@
+
 
 duos: $(OBJECT)/kmath.o \
 	$(OBJECT)/kfloat.o  \
@@ -171,7 +159,9 @@ duos: $(OBJECT)/kmath.o \
 	$(OBJECT)/sys_gpio.o \
 	$(OBJECT)/kstdio.o \
 	$(OBJECT)/sys_init.o \
+	$(OBJECT)/schedule.o \
 	$(OBJECT)/unistd.o \
+	$(OBJECT)/interactive_syscall_menu.o \
 	$(OBJECT)/times.o \
 	$(OBJECT)/syscall.o \
 	$(OBJECT)/serial_lin.o \
@@ -199,7 +189,9 @@ final.elf: $(OBJECT)/kmath.o \
 	$(OBJECT)/sys_gpio.o \
 	$(OBJECT)/kstdio.o \
 	$(OBJECT)/sys_init.o \
+	$(OBJECT)/schedule.o \
 	$(OBJECT)/unistd.o \
+	$(OBJECT)/interactive_syscall_menu.o \
 	$(OBJECT)/times.o \
 	$(OBJECT)/syscall.o \
 	$(OBJECT)/serial_lin.o \
@@ -220,5 +212,5 @@ clean:
 
 # To Students -- Modify to match with the appropriate driver file.
 load:
-	openocd -f /usr/share/openocd/scripts/board/stm32f4discovery.cfg -f /usr/share/openocd/scripts/interface/stlink.cfg -c "program target/duos verify reset exit"
+	openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program target/duos verify reset exit"
 

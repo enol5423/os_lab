@@ -34,7 +34,8 @@
 extern "C" {
 #endif
 
-#define MAX_TASKS   5
+/* NOTE: MAX_TASKS moved to schedule.h (now set to 8) */
+/* #define MAX_TASKS   5 */
 
 /* some stack memory calculations */
 #define SIZE_TASK_STACK          1024U

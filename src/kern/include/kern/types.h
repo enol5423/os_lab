@@ -93,6 +93,11 @@ typedef enum
 } ErrorStatus;
 
 
+/* 
+ * NOTE: TCB_TypeDef moved to schedule.h for full scheduler implementation
+ * Old stub definition commented out to avoid conflicts
+ */
+/*
 typedef struct task_tcb{
 	uint32_t magic_number; //here it is 0xFECABAA0
 	uint16_t task_id; //a unsigned 16 bit integer starting from 1000 
@@ -102,6 +107,7 @@ typedef struct task_tcb{
 	uint32_t waiting_time; //total waiting time (in ms)
 	uint32_t digital_sinature; //current value is 0x00000001
 } TCB_TypeDef;
+*/
 
 #if defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050) /* ARM Compiler V6 */
   #ifndef __weak

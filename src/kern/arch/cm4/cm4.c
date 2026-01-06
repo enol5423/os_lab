@@ -31,6 +31,10 @@
 #include <cm4.h>
 #include <sys_clock.h>
 #include <syscall.h>
+#include <schedule.h>
+
+// Forward declaration for TCB type
+typedef struct t_task_tcb TCB_TypeDef;
 
 // Global variables for time tracking
 static volatile uint32_t systick_ms_counter = 0;
@@ -140,6 +144,12 @@ void SysTick_Handler(void)
     // Increment millisecond counter
     systick_ms_counter++;
     
+    /* Call scheduler tick every 10ms (time quantum) */
+    if ((systick_ms_counter % 10) == 0) {
+        extern void scheduler_tick(void);
+        scheduler_tick();
+    }
+    
     // Handle seconds rollover (1000ms = 1s)
     if ((systick_ms_counter % 1000) == 0) {
         systick_seconds++;
@@ -229,11 +239,70 @@ void SYS_SLEEP_WFI(void)
     __WFI();
 }
 
+/* Flag to track if this is the first context switch */
+static volatile uint8_t first_switch = 1;
+
 /* Minimal PendSV handler for cooperative yield demo.
  * A real context switcher would save/restore r4-r11 and swap PSPs.
  */
 void PendSV_Handler(void)
 {
-    /* Simply clear the pending flag and return. */
-    SCB->ICSR |= SCB_ICSR_PENDSVCLR_Msk;
+    /* Check if this is the first context switch */
+    if (first_switch) {
+        first_switch = 0;
+        
+        /* First switch: Don't save context, just load first task */
+        __asm volatile (
+            "CPSID  I                   \n"  /* Disable interrupts */
+            "BL     load_next_psp       \n"  /* Get first task's PSP */
+            "LDMIA  R0!, {R4-R11}       \n"  /* Restore R4-R11 from task stack */
+            "MSR    PSP, R0             \n"  /* Set PSP to task */
+            "CPSIE  I                   \n"  /* Re-enable interrupts */
+            
+            "LDR    LR, =0xFFFFFFFD     \n"  /* EXC_RETURN: Thread mode, use PSP */
+            "BX     LR                  \n"  /* Return from exception */
+        );
+    }
+    
+    /* Normal context switch */
+    __asm volatile (
+        /* Save current task context */
+        "CPSID  I                   \n"  /* Disable interrupts */
+        "MRS    R0, PSP             \n"  /* Get current PSP */
+        "STMDB  R0!, {R4-R11}       \n"  /* Save R4-R11 to task stack */
+        "BL     save_current_psp    \n"  /* Call C function to save PSP */
+        
+        /* Load next task context */
+        "BL     schedule_next_task  \n"  /* Call scheduler to pick next task */
+        "BL     load_next_psp       \n"  /* Get next task's PSP */
+        "LDMIA  R0!, {R4-R11}       \n"  /* Restore R4-R11 from new task stack */
+        "MSR    PSP, R0             \n"  /* Set PSP to new task */
+        "CPSIE  I                   \n"  /* Re-enable interrupts */
+        
+        "LDR    LR, =0xFFFFFFFD     \n"  /* EXC_RETURN: Thread mode, use PSP */
+        "BX     LR                  \n"  /* Return from exception */
+    );
 }
+
+/* Helper function to save current task's PSP */
+void save_current_psp(uint32_t psp_value)
+{
+    extern TCB_TypeDef* get_current_task(void);
+    TCB_TypeDef *current = get_current_task();
+    if (current != 0) {
+        current->psp = (void*)psp_value;
+    }
+}
+
+/* Helper function to load next task's PSP */
+uint32_t load_next_psp(void)
+{
+    extern TCB_TypeDef* get_current_task(void);
+    TCB_TypeDef *next = get_current_task();
+    if (next != 0) {
+        return (uint32_t)next->psp;
+    }
+    return 0;
+}
+
+

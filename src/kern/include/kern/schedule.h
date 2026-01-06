@@ -31,6 +31,65 @@
 #ifndef __SCHEDULE_H
 #define __SCHEDULE_H
 
-#endif
+#include <stdint.h>
+
+/* Task status definitions */
+#define TASK_STATUS_NEW         0
+#define TASK_STATUS_READY       1
+#define TASK_STATUS_RUNNING     2
+#define TASK_STATUS_WAITING     3
+#define TASK_STATUS_TERMINATED  4
+#define TASK_STATUS_KILLED      5
+
+/* Stack magic number for integrity checking */
+#define STACK_MAGIC_NUMBER      0xDEADBEEF
+
+/* Maximum number of tasks */
+#define MAX_TASKS               8
+
+/* Task stack size (in bytes) */
+#define TASK_STACK_SIZE         1024
+
+/* Task Control Block (TCB) */
+typedef struct t_task_tcb {
+    uint32_t magic_number;      /* Stack integrity check */
+    uint16_t task_id;           /* Unique task ID (starting from 1000) */
+    void *psp;                  /* Process Stack Pointer - CRITICAL for scheduling */
+    uint16_t status;            /* Task status (new/ready/running/waiting/terminated/killed) */
+    uint8_t priority;           /* Priority level (0 = highest) */
+    uint16_t parent_id;         /* Parent task ID */
+    uint32_t execution_time;    /* Total execution time in ms */
+    uint32_t waiting_time;      /* Total waiting time in ms */
+    uint32_t start_time;        /* Time when task was created */
+    uint32_t last_run_time;     /* Last time task got CPU */
+    void (*task_handler)(void); /* Task entry point function */
+    struct t_task_tcb *next;    /* Next task in ready queue */
+} TCB_TypeDef;
+
+/* Scheduler state */
+typedef struct {
+    TCB_TypeDef *current_task;  /* Currently running task */
+    TCB_TypeDef *ready_queue;   /* Head of ready queue (circular) */
+    uint16_t task_count;        /* Number of active tasks */
+    uint16_t next_task_id;      /* Next available task ID */
+    uint32_t context_switches;  /* Total context switches performed */
+    uint8_t scheduler_started;  /* Flag: scheduler running */
+} Scheduler_TypeDef;
+
+/* Scheduler API functions */
+void scheduler_init(void);
+int32_t task_create(void (*task_handler)(void), uint8_t priority);
+void scheduler_start(void);
+void schedule_next_task(void);
+TCB_TypeDef* get_current_task(void);
+void task_yield(void);
+
+/* Internal helper functions */
+void add_task_to_ready_queue(TCB_TypeDef *task);
+TCB_TypeDef* get_next_ready_task(void);
+void initialize_task_stack(TCB_TypeDef *task, void (*task_handler)(void));
+
+#endif /* __SCHEDULE_H */
+
 
 

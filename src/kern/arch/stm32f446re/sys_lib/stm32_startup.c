@@ -186,30 +186,42 @@ void BusFault_Handler(void)
 	while(1);
 }
 
-void SVCall_Handler(void){
-/* SVC handler: extract stacked context, fetch syscall id (r0),
- * dispatch to kernel, and place return value back into stacked r0. */
+/* Debug counter for SVCall_Handler */
+volatile uint32_t g_svcall_count = 0;
+volatile uint32_t g_last_callno = 0;
+volatile int32_t g_last_retval = 0;
+
+/* Assembly wrapper for SVC to correctly locate stacked frame and call C handler */
+__attribute__((naked)) void SVCall_Handler(void)
+{
+	__asm volatile (
+		"tst   lr, #4        \n"
+		"ite   eq            \n"
+		"mrseq r0, msp       \n"  /* r0 = MSP if from handler using MSP */
+		"mrsne r0, psp       \n"  /* r0 = PSP if from thread using PSP */
+		"b     SVCall_Handler_C \n"
+	);
+}
+
+/* C-level SVC handler: r0 points to stacked frame (r0..r3,r12,lr,pc,xpsr) */
+void SVCall_Handler_C(uint32_t *stack_ptr)
+{
 	extern int32_t syscall_dispatch(uint16_t callno, uint32_t a1, uint32_t a2, uint32_t a3);
 
-	uint32_t *stack_ptr;
-	/* Determine stack pointer in use: MSP or PSP (bit 2 of LR) */
-	__asm volatile (
-		"TST lr, #4       \n"
-		"ITE EQ           \n"
-		"MRSEQ %0, MSP    \n"
-		"MRSNE %0, PSP    \n"
-		: "=r" (stack_ptr) :: "memory"
-	);
+	g_svcall_count++;  /* Debug: count how many times handler is called */
 
-	/* Stacked registers: r0,r1,r2,r3,r12,lr,pc,xpsr */
 	uint16_t callno = (uint16_t)(stack_ptr[0]);
 	uint32_t a1 = stack_ptr[1];
 	uint32_t a2 = stack_ptr[2];
 	uint32_t a3 = stack_ptr[3];
 
+	g_last_callno = callno;  /* Debug: save last syscall number */
+
 	int32_t ret = syscall_dispatch(callno, a1, a2, a3);
 
-	/* Place return value in stacked r0 so the thread receives it in r0 */
+	g_last_retval = ret;  /* Debug: save last return value */
+
+	/* Place result into stacked r0 to return to caller */
 	stack_ptr[0] = (uint32_t)ret;
 }
 

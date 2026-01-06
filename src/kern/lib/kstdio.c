@@ -59,6 +59,11 @@ void kprintf(char *format,...)
 	{
 		while(*tr != '%' && *tr!='\0')
 		{
+			// Fix diagonal printing: Add \r before \n
+			if(*tr == '\n')
+			{
+				Uart_write('\r',__CONSOLE);
+			}
 			Uart_write(*tr,__CONSOLE);
 			tr++;
 		}
